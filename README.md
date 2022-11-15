@@ -2,6 +2,8 @@
 
 This repository contains the  *C++ bindings* for the [**Godot Engine**](https://github.com/godotengine/godot)'s GDExtensions API.
 
+⚠️ This fork is meant to be used by [**godot-jolt**](https://github.com/godot-jolt/godot-jolt) and is not suited for general use.
+
 - [**Versioning**](#versioning)
 - [**Contributing**](#contributing)
 - [**Getting Started**](#getting-started)

@@ -1,0 +1,44 @@
+include_guard()
+
+set(bindings_script ${CMAKE_CURRENT_SOURCE_DIR}/godot_jolt.py)
+set(bindings_api ${CMAKE_CURRENT_SOURCE_DIR}/godot-headers/extension_api.json)
+set(arch_bits $<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64,32>)
+
+execute_process(
+	COMMAND ${Python_EXECUTABLE} ${bindings_script}
+		print
+			-a ${bindings_api}
+			-o ${CMAKE_CURRENT_BINARY_DIR}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	OUTPUT_VARIABLE generated_files
+	ERROR_VARIABLE print_error
+	RESULT_VARIABLE print_exit_code
+)
+
+if(NOT ${print_exit_code} EQUAL 0)
+	message(FATAL_ERROR "Failed to print list of generated files, with stderr: '${print_error}'.")
+endif()
+
+if("${generated_files}" STREQUAL "")
+	message(FATAL_ERROR "Failed to print list of generated files, for unknown reason.")
+endif()
+
+add_custom_command(
+	OUTPUT ${generated_files}
+	COMMENT "Generating bindings..."
+	COMMAND ${Python_EXECUTABLE} ${bindings_script}
+		generate
+			-a ${bindings_api}
+			-o ${CMAKE_CURRENT_BINARY_DIR}
+			-b ${arch_bits}
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	MAIN_DEPENDENCY ${bindings_api}
+	DEPENDS ${bindings_script}
+	VERBATIM
+)
+
+set(${PROJECT_NAME}_GENERATED_SOURCES ${generated_files})
+set(${PROJECT_NAME}_GENERATED_HEADERS ${generated_files})
+
+list(FILTER ${PROJECT_NAME}_GENERATED_SOURCES INCLUDE REGEX [[\.c(..)?$]])
+list(FILTER ${PROJECT_NAME}_GENERATED_HEADERS INCLUDE REGEX [[\.h(..)?$]])
