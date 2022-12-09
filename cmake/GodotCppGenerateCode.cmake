@@ -1,11 +1,12 @@
 include_guard()
 
-set(bindings_script ${CMAKE_CURRENT_SOURCE_DIR}/godot_jolt.py)
+set(launch_script ${CMAKE_CURRENT_SOURCE_DIR}/godot_jolt.py)
+set(generator_script ${CMAKE_CURRENT_SOURCE_DIR}/binding_generator.py)
 set(bindings_api ${CMAKE_CURRENT_SOURCE_DIR}/godot-headers/extension_api.json)
 set(arch_bits $<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64,32>)
 
 execute_process(
-	COMMAND ${Python_EXECUTABLE} ${bindings_script}
+	COMMAND ${Python_EXECUTABLE} ${launch_script}
 		print
 			-a ${bindings_api}
 			-o ${CMAKE_CURRENT_BINARY_DIR}
@@ -26,14 +27,14 @@ endif()
 add_custom_command(
 	OUTPUT ${generated_files}
 	COMMENT "Generating bindings..."
-	COMMAND ${Python_EXECUTABLE} ${bindings_script}
+	COMMAND ${Python_EXECUTABLE} ${launch_script}
 		generate
 			-a ${bindings_api}
 			-o ${CMAKE_CURRENT_BINARY_DIR}
 			-b ${arch_bits}
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	MAIN_DEPENDENCY ${bindings_api}
-	DEPENDS ${bindings_script}
+	DEPENDS ${launch_script} ${generator_script}
 	VERBATIM
 )
 
