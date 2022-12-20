@@ -26,10 +26,9 @@ Stable releases are also tagged on this repository:
 this repository as a Git submodule, checking out the specific tag matching your
 Godot version.**
 
-> As the `master` and `3.x` branches are constantly getting updates, if you are
+> As the `master` branch of Godot is constantly getting updated, if you are
 > using `godot-cpp` against a more current version of Godot, see the instructions
-> in [**godot-headers**](https://github.com/godotengine/godot-headers) for
-> updating the relevant files.
+> in the `gdextension` folder to update the relevant files.
 
 ## Contributing
 
@@ -78,7 +77,7 @@ extern "C" {
 
 // Initialization.
 
-GDNativeBool GDN_EXPORT example_library_init(const GDNativeInterface *p_interface, GDNativeExtensionClassLibraryPtr p_library, GDNativeInitialization *r_initialization) {
+GDExtensionBool GDE_EXPORT example_library_init(const GDExtensionInterface *p_interface, GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
 	godot::GDExtensionBinding::InitObject init_obj(p_interface, p_library, r_initialization);
 
 	init_obj.register_initializer(initialize_example_module);

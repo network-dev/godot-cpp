@@ -46,7 +46,7 @@ target_compile_features(godot-cpp
 target_include_directories(godot-cpp
 	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 	PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/gen/include
-	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/godot-headers
+	PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/gdextension
 )
 
 target_compile_definitions(godot-cpp
