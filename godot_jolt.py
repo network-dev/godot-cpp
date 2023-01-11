@@ -17,7 +17,7 @@ def main():
     parser_generate.add_argument("-o", "--output", required=True)
     parser_generate.add_argument("-a", "--api", required=True)
     parser_generate.add_argument("-b", "--arch-bits", required=True)
-    parser_generate.add_argument("-f", "--floating-point", default="float")
+    parser_generate.add_argument("-p", "--precision", default="single")
 
     args = parser.parse_args()
 
@@ -28,7 +28,7 @@ def main():
             api_filepath=args.api,
             use_template_get_node=True,
             bits=args.arch_bits,
-            double=args.floating_point,
+            precision=args.precision,
             output_dir=args.output,
         )
 
