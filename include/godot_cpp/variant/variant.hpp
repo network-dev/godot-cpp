@@ -42,6 +42,8 @@
 
 namespace godot {
 
+class ObjectID;
+
 class Variant {
 	uint8_t opaque[GODOT_CPP_VARIANT_SIZE]{ 0 };
 
@@ -187,6 +189,7 @@ public:
 	Variant(const StringName &v);
 	Variant(const NodePath &v);
 	Variant(const godot::RID &v);
+	Variant(const ObjectID &v);
 	Variant(const Object *v);
 	Variant(const Callable &v);
 	Variant(const Signal &v);
@@ -230,6 +233,7 @@ public:
 	operator StringName() const;
 	operator NodePath() const;
 	operator godot::RID() const;
+	operator ObjectID() const;
 	operator Object *() const;
 	operator Callable() const;
 	operator Signal() const;
@@ -317,6 +321,18 @@ struct VariantHasher {
 struct VariantComparator {
 	static _FORCE_INLINE_ bool compare(const Variant &p_lhs, const Variant &p_rhs) { return p_lhs.hash_compare(p_rhs); }
 };
+
+template <typename... VarArgs>
+String vformat(const String &p_text, const VarArgs... p_args) {
+	Variant args[sizeof...(p_args) + 1] = { p_args..., Variant() }; // +1 makes sure zero sized arrays are also supported.
+	Array args_array;
+	args_array.resize(sizeof...(p_args));
+	for (uint32_t i = 0; i < sizeof...(p_args); i++) {
+		args_array[i] = args[i];
+	}
+
+	return p_text % args_array;
+}
 
 } // namespace godot
 

@@ -41,6 +41,8 @@
 
 namespace godot {
 
+class ClassDB;
+
 typedef void GodotObject;
 
 // Base for all engine classes, to contain the pointer to the engine instance.
@@ -77,6 +79,7 @@ protected:
 
 	Wrapped(const StringName p_godot_class);
 	Wrapped(GodotObject *p_godot_object);
+	virtual ~Wrapped() {}
 
 public:
 	static StringName &get_class_static() {

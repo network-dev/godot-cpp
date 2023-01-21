@@ -191,6 +191,10 @@ Variant::Variant(const Object *v) {
 	}
 }
 
+Variant::Variant(const ObjectID &p_id) :
+		Variant(p_id.operator uint64_t()) {
+}
+
 Variant::Variant(const Callable &v) {
 	from_type_constructor[CALLABLE](_native_ptr(), v._native_ptr());
 }
@@ -408,6 +412,21 @@ Variant::operator Object *() const {
 		return nullptr;
 	}
 	return reinterpret_cast<Object *>(internal::gde_interface->object_get_instance_binding(obj, internal::token, &Object::___binding_callbacks));
+}
+
+Variant::operator ObjectID() const {
+	if (get_type() == Type::INT) {
+		return ObjectID(operator uint64_t());
+	} else if (get_type() == Type::OBJECT) {
+		Object *obj = operator Object *();
+		if (obj != nullptr) {
+			return ObjectID(obj->get_instance_id());
+		} else {
+			return ObjectID();
+		}
+	} else {
+		return ObjectID();
+	}
 }
 
 Variant::operator Callable() const {
@@ -700,14 +719,12 @@ String Variant::get_type_name(Variant::Type type) {
 }
 
 bool Variant::can_convert(Variant::Type from, Variant::Type to) {
-	GDExtensionBool can;
-	internal::gde_interface->variant_can_convert(static_cast<GDExtensionVariantType>(from), static_cast<GDExtensionVariantType>(to));
+	GDExtensionBool can = internal::gde_interface->variant_can_convert(static_cast<GDExtensionVariantType>(from), static_cast<GDExtensionVariantType>(to));
 	return PtrToArg<bool>::convert(&can);
 }
 
 bool Variant::can_convert_strict(Variant::Type from, Variant::Type to) {
-	GDExtensionBool can;
-	internal::gde_interface->variant_can_convert_strict(static_cast<GDExtensionVariantType>(from), static_cast<GDExtensionVariantType>(to));
+	GDExtensionBool can = internal::gde_interface->variant_can_convert_strict(static_cast<GDExtensionVariantType>(from), static_cast<GDExtensionVariantType>(to));
 	return PtrToArg<bool>::convert(&can);
 }
 
