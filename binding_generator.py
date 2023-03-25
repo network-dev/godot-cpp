@@ -1468,11 +1468,12 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
             result.append(method_signature + " {")
 
             # Method body.
-            result.append(f"\tconst StringName __class_name = {class_name}::get_class_static();")
-            result.append(f'\tconst StringName __method_name = "{method["name"]}";')
-            result.append(
-                f'\tstatic GDExtensionMethodBindPtr ___method_bind = internal::gde_interface->classdb_get_method_bind(__class_name._native_ptr(), __method_name._native_ptr(), {method["hash"]});'
-            )
+            result.append("\tstatic GDExtensionMethodBindPtr ___method_bind = []() {")
+            result.append(f"\t\tStringName __class_name = {class_name}::get_class_static();")
+            result.append(f'\t\tStringName __method_name = "{method["name"]}";')
+            result.append(f'\t\treturn internal::gde_interface->classdb_get_method_bind(__class_name._native_ptr(), __method_name._native_ptr(), {method["hash"]});')
+            result.append("\t}();")
+            result.append("")
             method_call = "\t"
             has_return = "return_value" in method and method["return_value"]["type"] != "void"
 
