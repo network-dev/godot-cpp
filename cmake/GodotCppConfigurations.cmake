@@ -1,5 +1,7 @@
 include_guard()
 
+include(GodotCppUtilities)
+
 set(supported_configs
 	Debug
 	Distribution
@@ -21,39 +23,10 @@ else()
 	endif()
 endif()
 
-macro(duplicate_config src dst)
-	string(TOUPPER ${src} src_upper)
-	string(TOUPPER ${dst} dst_upper)
+gdcpp_duplicate_config(RelWithDebInfo Distribution)
+gdcpp_duplicate_config(Debug EditorDebug)
+gdcpp_duplicate_config(Distribution EditorDistribution)
 
-	set(CMAKE_CXX_FLAGS_${dst_upper} ${CMAKE_CXX_FLAGS_${src_upper}} CACHE STRING "")
-	set(CMAKE_EXE_LINKER_FLAGS_${dst_upper} ${CMAKE_EXE_LINKER_FLAGS_${src_upper}} CACHE STRING "")
-	set(CMAKE_MODULE_LINKER_FLAGS_${dst_upper} ${CMAKE_MODULE_LINKER_FLAGS_${src_upper}} CACHE STRING "")
-	set(CMAKE_SHARED_LINKER_FLAGS_${dst_upper} ${CMAKE_SHARED_LINKER_FLAGS_${src_upper}} CACHE STRING "")
-	set(CMAKE_STATIC_LINKER_FLAGS_${dst_upper} ${CMAKE_STATIC_LINKER_FLAGS_${src_upper}} CACHE STRING "")
-
-	if(MSVC)
-		set(CMAKE_RC_FLAGS_${dst_upper} ${CMAKE_RC_FLAGS_${src_upper}} CACHE STRING "")
-	endif()
-endmacro()
-
-macro(remove_config name)
-	string(TOUPPER ${name} name_upper)
-
-	unset(CMAKE_CXX_FLAGS_${name_upper} CACHE)
-	unset(CMAKE_EXE_LINKER_FLAGS_${name_upper} CACHE)
-	unset(CMAKE_MODULE_LINKER_FLAGS_${name_upper} CACHE)
-	unset(CMAKE_SHARED_LINKER_FLAGS_${name_upper} CACHE)
-	unset(CMAKE_STATIC_LINKER_FLAGS_${name_upper} CACHE)
-
-	if(MSVC)
-		unset(CMAKE_RC_FLAGS_${name_upper} CACHE)
-	endif()
-endmacro()
-
-duplicate_config(RelWithDebInfo Distribution)
-duplicate_config(Debug EditorDebug)
-duplicate_config(Distribution EditorDistribution)
-
-remove_config(MinSizeRel)
-remove_config(Release)
-remove_config(RelWithDebInfo)
+gdcpp_remove_config(MinSizeRel)
+gdcpp_remove_config(Release)
+gdcpp_remove_config(RelWithDebInfo)
