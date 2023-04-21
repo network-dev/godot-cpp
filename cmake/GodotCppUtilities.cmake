@@ -1,6 +1,6 @@
 include_guard()
 
-macro(gdcpp_duplicate_config src dst)
+macro(gde_duplicate_config src dst)
 	string(TOUPPER ${src} src_upper)
 	string(TOUPPER ${dst} dst_upper)
 
@@ -15,7 +15,7 @@ macro(gdcpp_duplicate_config src dst)
 	endif()
 endmacro()
 
-macro(gdcpp_remove_config name)
+macro(gde_remove_config name)
 	string(TOUPPER ${name} name_upper)
 
 	unset(CMAKE_CXX_FLAGS_${name_upper} CACHE)
