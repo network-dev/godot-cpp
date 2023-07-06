@@ -54,11 +54,14 @@ target_compile_definitions(godot-cpp
 )
 
 if(MSVC)
+	# Disable support for exception-handling
+	string(REPLACE "/EHsc" "/EHs-c-" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
 	target_compile_options(godot-cpp
 		PRIVATE /W0 # Disable warnings
+		PRIVATE /wd4530 # Disable lack of unwind semantics warning
 		PRIVATE /GF # Enable string pooling
 		PRIVATE /Gy # Enable function-level linking
-		PRIVATE /EHsc # Enable exception handling
 		PRIVATE /fp:fast # Enable aggressive floating-point optimizations
 		PRIVATE $<${is_optimized_config}:/GS-> # Disable security checks
 		PRIVATE $<${target_avx}:/arch:AVX> # Enable AVX instructions
@@ -80,6 +83,7 @@ else()
 	target_compile_options(godot-cpp
 		PRIVATE -w # Disable warnings
 		PRIVATE -ffast-math # Enable aggressive floating-point optimizations
+		PRIVATE -fno-exceptions # Disable support for exception-handling
 		PRIVATE $<${use_sse2}:-msse2> # Enable SSE2 instructions
 		PRIVATE $<${use_sse4_2}:-msse4.2> # Enable SSE4.2 instructions
 		PRIVATE $<${use_sse4_2}:-mpopcnt> # Enable the POPCNT instruction
