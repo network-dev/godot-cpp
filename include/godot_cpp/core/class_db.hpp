@@ -104,6 +104,9 @@ public:
 private:
 	// This may only contain custom classes, not Godot classes
 	static std::unordered_map<StringName, ClassInfo> classes;
+	static std::unordered_map<StringName, const GDExtensionInstanceBindingCallbacks *> instance_binding_callbacks;
+	// Used to remember the custom class registration order.
+	static std::vector<StringName> class_register_order;
 
 	static MethodBind *bind_methodfi(uint32_t p_flags, MethodBind *p_bind, const MethodDefinition &method_name, const void **p_defs, int p_defcount);
 	static void initialize_class(const ClassInfo &cl);
@@ -117,6 +120,8 @@ public:
 	static void register_class(bool p_virtual = false);
 	template <class T>
 	static void register_abstract_class();
+	template <class T>
+	static void register_engine_class();
 
 	template <class N, class M, typename... VarArgs>
 	static MethodBind *bind_method(N p_method_name, M p_method, VarArgs... p_args);
@@ -137,6 +142,7 @@ public:
 	static MethodBind *get_method(const StringName &p_class, const StringName &p_method);
 
 	static GDExtensionClassCallVirtual get_virtual_func(void *p_userdata, GDExtensionConstStringNamePtr p_name);
+	static const GDExtensionInstanceBindingCallbacks *get_instance_binding_callbacks(const StringName &p_class);
 
 	static void initialize(GDExtensionInitializationLevel p_level);
 	static void deinitialize(GDExtensionInitializationLevel p_level);
@@ -146,21 +152,23 @@ public:
 	godot::ClassDB::bind_integer_constant(get_class_static(), "", #m_constant, m_constant);
 
 #define BIND_ENUM_CONSTANT(m_constant) \
-	godot::ClassDB::bind_integer_constant(get_class_static(), godot::__constant_get_enum_name(m_constant, #m_constant), #m_constant, m_constant);
+	godot::ClassDB::bind_integer_constant(get_class_static(), godot::_gde_constant_get_enum_name(m_constant, #m_constant), #m_constant, m_constant);
 
 #define BIND_BITFIELD_FLAG(m_constant) \
-	godot::ClassDB::bind_integer_constant(get_class_static(), godot::__constant_get_bitfield_name(m_constant, #m_constant), #m_constant, m_constant, true);
+	godot::ClassDB::bind_integer_constant(get_class_static(), godot::_gde_constant_get_bitfield_name(m_constant, #m_constant), #m_constant, m_constant, true);
 
-#define BIND_VIRTUAL_METHOD(m_class, m_method)                                                                                                  \
-	{                                                                                                                                           \
-		auto ___call##m_method = [](GDExtensionObjectPtr p_instance, const GDExtensionConstTypePtr *p_args, GDExtensionTypePtr p_ret) -> void { \
-			call_with_ptr_args(reinterpret_cast<m_class *>(p_instance), &m_class::m_method, p_args, p_ret);                                     \
-		};                                                                                                                                      \
-		godot::ClassDB::bind_virtual_method(m_class::get_class_static(), #m_method, ___call##m_method);                                         \
+#define BIND_VIRTUAL_METHOD(m_class, m_method)                                                                                                \
+	{                                                                                                                                         \
+		auto _call##m_method = [](GDExtensionObjectPtr p_instance, const GDExtensionConstTypePtr *p_args, GDExtensionTypePtr p_ret) -> void { \
+			call_with_ptr_args(reinterpret_cast<m_class *>(p_instance), &m_class::m_method, p_args, p_ret);                                   \
+		};                                                                                                                                    \
+		godot::ClassDB::bind_virtual_method(m_class::get_class_static(), #m_method, _call##m_method);                                         \
 	}
 
 template <class T, bool is_abstract>
 void ClassDB::_register_class(bool p_virtual) {
+	instance_binding_callbacks[T::get_class_static()] = &T::_gde_binding_callbacks;
+
 	// Register this class within our plugin
 	ClassInfo cl;
 	cl.name = T::get_class_static();
@@ -172,6 +180,7 @@ void ClassDB::_register_class(bool p_virtual) {
 		cl.parent_ptr = &parent_it->second;
 	}
 	classes[cl.name] = cl;
+	class_register_order.push_back(cl.name);
 
 	// Register this class with Godot
 	GDExtensionClassCreationInfo class_info = {
@@ -194,7 +203,7 @@ void ClassDB::_register_class(bool p_virtual) {
 		(void *)&T::get_class_static(), // void *class_userdata;
 	};
 
-	internal::gde_interface->classdb_register_extension_class(internal::library, cl.name._native_ptr(), cl.parent_name._native_ptr(), &class_info);
+	internal::gdextension_interface_classdb_register_extension_class(internal::library, cl.name._native_ptr(), cl.parent_name._native_ptr(), &class_info);
 
 	// call bind_methods etc. to register all members of the class
 	T::initialize_class();
@@ -211,6 +220,11 @@ void ClassDB::register_class(bool p_virtual) {
 template <class T>
 void ClassDB::register_abstract_class() {
 	ClassDB::_register_class<T, true>();
+}
+
+template <class T>
+void ClassDB::register_engine_class() {
+	instance_binding_callbacks[T::get_class_static()] = &T::_gde_binding_callbacks;
 }
 
 template <class N, class M, typename... VarArgs>

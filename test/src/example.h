@@ -16,6 +16,8 @@
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 
 #include <godot_cpp/core/binder_common.hpp>
@@ -38,6 +40,7 @@ public:
 	ExampleRef();
 	~ExampleRef();
 
+	void set_id(int p_id);
 	int get_id() const;
 };
 
@@ -67,6 +70,7 @@ private:
 	Vector2 custom_position;
 	Vector3 property_from_list;
 	Vector2 dprop[3];
+	int last_rpc_arg = 0;
 
 public:
 	// Constants.
@@ -90,8 +94,13 @@ public:
 	// Functions.
 	void simple_func();
 	void simple_const_func() const;
+	int custom_ref_func(Ref<ExampleRef> p_ref);
+	int custom_const_ref_func(const Ref<ExampleRef> &p_ref);
+	String image_ref_func(Ref<Image> p_image);
+	String image_const_ref_func(const Ref<Image> &p_image);
 	String return_something(const String &base);
 	Viewport *return_something_const() const;
+	Ref<ExampleRef> return_ref() const;
 	Ref<ExampleRef> return_empty_ref() const;
 	ExampleRef *return_extended_ref() const;
 	Ref<ExampleRef> extended_ref_checks(Ref<ExampleRef> p_ref) const;
@@ -102,14 +111,20 @@ public:
 	int def_args(int p_a = 100, int p_b = 200);
 
 	Array test_array() const;
-	void test_tarray_arg(const TypedArray<int64_t> &p_array);
+	int test_tarray_arg(const TypedArray<int64_t> &p_array);
 	TypedArray<Vector2> test_tarray() const;
 	Dictionary test_dictionary() const;
 	Example *test_node_argument(Example *p_node) const;
 	String test_string_ops() const;
+	String test_str_utility() const;
 	int test_vector_ops() const;
 
 	BitField<Flags> test_bitfield(BitField<Flags> flags);
+
+	// RPC
+	void test_rpc(int p_value);
+	void test_send_rpc(int p_value);
+	int return_last_rpc_arg();
 
 	// Property.
 	void set_custom_position(const Vector2 &pos);
@@ -122,6 +137,7 @@ public:
 
 	// Virtual function override (no need to bind manually).
 	virtual bool _has_point(const Vector2 &point) const override;
+	virtual void _input(const Ref<InputEvent> &event) override;
 };
 
 VARIANT_ENUM_CAST(Example::Constants);

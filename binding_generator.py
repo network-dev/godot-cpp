@@ -66,14 +66,14 @@ def generate_wrappers(target):
 
     txt += "\n#endif\n"
 
-    with open(target, "w") as f:
+    with open(target, "w", encoding="utf-8") as f:
         f.write(txt)
 
 
 def get_file_list(api_filepath, output_dir, headers=False, sources=False):
     api = {}
     files = []
-    with open(api_filepath) as api_file:
+    with open(api_filepath, encoding="utf-8") as api_file:
         api = json.load(api_file)
 
     core_gen_folder = Path(output_dir) / "gen" / "include" / "godot_cpp" / "core"
@@ -128,6 +128,8 @@ def get_file_list(api_filepath, output_dir, headers=False, sources=False):
     if sources:
         utility_functions_source_path = source_gen_folder / "variant" / "utility_functions.cpp"
         files.append(str(utility_functions_source_path.as_posix()))
+        register_engine_classes_source_path = source_gen_folder / "register_engine_classes.cpp"
+        files.append(str(register_engine_classes_source_path.as_posix()))
 
     return files
 
@@ -161,7 +163,7 @@ def generate_bindings(api_filepath, use_template_get_node, bits="64", precision=
 
     target_dir = Path(output_dir) / "gen"
 
-    with open(api_filepath) as api_file:
+    with open(api_filepath, encoding="utf-8") as api_file:
         api = json.load(api_file)
 
     shutil.rmtree(target_dir, ignore_errors=True)
@@ -217,7 +219,7 @@ def generate_builtin_bindings(api, output_dir, build_config):
 
     # Create a file for Variant size, since that class isn't generated.
     variant_size_filename = include_gen_folder / "variant_size.hpp"
-    with variant_size_filename.open("+w") as variant_size_file:
+    with variant_size_filename.open("+w", encoding="utf-8") as variant_size_file:
         variant_size_source = []
         add_header("variant_size.hpp", variant_size_source)
 
@@ -293,15 +295,15 @@ def generate_builtin_bindings(api, output_dir, build_config):
         fully_used_classes = list(fully_used_classes)
         fully_used_classes.sort()
 
-        with header_filename.open("w+") as header_file:
+        with header_filename.open("w+", encoding="utf-8") as header_file:
             header_file.write(generate_builtin_class_header(builtin_api, size, used_classes, fully_used_classes))
 
-        with source_filename.open("w+") as source_file:
+        with source_filename.open("w+", encoding="utf-8") as source_file:
             source_file.write(generate_builtin_class_source(builtin_api, size, used_classes, fully_used_classes))
 
     # Create a header with all builtin types for convenience.
     builtin_header_filename = include_gen_folder / "builtin_types.hpp"
-    with builtin_header_filename.open("w+") as builtin_header_file:
+    with builtin_header_filename.open("w+", encoding="utf-8") as builtin_header_file:
         builtin_header = []
         add_header("builtin_types.hpp", builtin_header)
 
@@ -321,7 +323,7 @@ def generate_builtin_bindings(api, output_dir, build_config):
 
     # Create a header with bindings for builtin types.
     builtin_binds_filename = include_gen_folder / "builtin_binds.hpp"
-    with builtin_binds_filename.open("w+") as builtin_binds_file:
+    with builtin_binds_filename.open("w+", encoding="utf-8") as builtin_binds_file:
         builtin_binds = []
         add_header("builtin_binds.hpp", builtin_binds)
 
@@ -772,12 +774,12 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
     if "constructors" in builtin_api:
         for constructor in builtin_api["constructors"]:
             result.append(
-                f'\t_method_bindings.constructor_{constructor["index"]} = internal::gde_interface->variant_get_ptr_constructor({enum_type_name}, {constructor["index"]});'
+                f'\t_method_bindings.constructor_{constructor["index"]} = internal::gdextension_interface_variant_get_ptr_constructor({enum_type_name}, {constructor["index"]});'
             )
 
     if builtin_api["has_destructor"]:
         result.append(
-            f"\t_method_bindings.destructor = internal::gde_interface->variant_get_ptr_destructor({enum_type_name});"
+            f"\t_method_bindings.destructor = internal::gdextension_interface_variant_get_ptr_destructor({enum_type_name});"
         )
 
     result.append("}")
@@ -789,43 +791,43 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
         result.append("\tString::_init_bindings_constructors_destructor();")
     result.append(f"\t{class_name}::_init_bindings_constructors_destructor();")
 
-    result.append("\tStringName __name;")
+    result.append("\tStringName _gde_name;")
 
     if "methods" in builtin_api:
         for method in builtin_api["methods"]:
             # TODO: Add error check for hash mismatch.
-            result.append(f'\t__name = StringName("{method["name"]}");')
+            result.append(f'\t_gde_name = StringName("{method["name"]}");')
             result.append(
-                f'\t_method_bindings.method_{method["name"]} = internal::gde_interface->variant_get_ptr_builtin_method({enum_type_name}, __name._native_ptr(), {method["hash"]});'
+                f'\t_method_bindings.method_{method["name"]} = internal::gdextension_interface_variant_get_ptr_builtin_method({enum_type_name}, _gde_name._native_ptr(), {method["hash"]});'
             )
 
     if "members" in builtin_api:
         for member in builtin_api["members"]:
-            result.append(f'\t__name = StringName("{member["name"]}");')
+            result.append(f'\t_gde_name = StringName("{member["name"]}");')
             result.append(
-                f'\t_method_bindings.member_{member["name"]}_setter = internal::gde_interface->variant_get_ptr_setter({enum_type_name}, __name._native_ptr());'
+                f'\t_method_bindings.member_{member["name"]}_setter = internal::gdextension_interface_variant_get_ptr_setter({enum_type_name}, _gde_name._native_ptr());'
             )
             result.append(
-                f'\t_method_bindings.member_{member["name"]}_getter = internal::gde_interface->variant_get_ptr_getter({enum_type_name}, __name._native_ptr());'
+                f'\t_method_bindings.member_{member["name"]}_getter = internal::gdextension_interface_variant_get_ptr_getter({enum_type_name}, _gde_name._native_ptr());'
             )
 
     if "indexing_return_type" in builtin_api:
         result.append(
-            f"\t_method_bindings.indexed_setter = internal::gde_interface->variant_get_ptr_indexed_setter({enum_type_name});"
+            f"\t_method_bindings.indexed_setter = internal::gdextension_interface_variant_get_ptr_indexed_setter({enum_type_name});"
         )
         result.append(
-            f"\t_method_bindings.indexed_getter = internal::gde_interface->variant_get_ptr_indexed_getter({enum_type_name});"
+            f"\t_method_bindings.indexed_getter = internal::gdextension_interface_variant_get_ptr_indexed_getter({enum_type_name});"
         )
 
     if "is_keyed" in builtin_api and builtin_api["is_keyed"]:
         result.append(
-            f"\t_method_bindings.keyed_setter = internal::gde_interface->variant_get_ptr_keyed_setter({enum_type_name});"
+            f"\t_method_bindings.keyed_setter = internal::gdextension_interface_variant_get_ptr_keyed_setter({enum_type_name});"
         )
         result.append(
-            f"\t_method_bindings.keyed_getter = internal::gde_interface->variant_get_ptr_keyed_getter({enum_type_name});"
+            f"\t_method_bindings.keyed_getter = internal::gdextension_interface_variant_get_ptr_keyed_getter({enum_type_name});"
         )
         result.append(
-            f"\t_method_bindings.keyed_checker = internal::gde_interface->variant_get_ptr_keyed_checker({enum_type_name});"
+            f"\t_method_bindings.keyed_checker = internal::gdextension_interface_variant_get_ptr_keyed_checker({enum_type_name});"
         )
 
     if "operators" in builtin_api:
@@ -838,11 +840,11 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
                         f"GDEXTENSION_VARIANT_TYPE_{camel_to_snake(operator['right_type']).upper()}"
                     )
                 result.append(
-                    f'\t_method_bindings.operator_{get_operator_id_name(operator["name"])}_{operator["right_type"]} = internal::gde_interface->variant_get_ptr_operator_evaluator(GDEXTENSION_VARIANT_OP_{get_operator_id_name(operator["name"]).upper()}, {enum_type_name}, {right_type_variant_type});'
+                    f'\t_method_bindings.operator_{get_operator_id_name(operator["name"])}_{operator["right_type"]} = internal::gdextension_interface_variant_get_ptr_operator_evaluator(GDEXTENSION_VARIANT_OP_{get_operator_id_name(operator["name"]).upper()}, {enum_type_name}, {right_type_variant_type});'
                 )
             else:
                 result.append(
-                    f'\t_method_bindings.operator_{get_operator_id_name(operator["name"])} = internal::gde_interface->variant_get_ptr_operator_evaluator(GDEXTENSION_VARIANT_OP_{get_operator_id_name(operator["name"]).upper()}, {enum_type_name}, GDEXTENSION_VARIANT_TYPE_NIL);'
+                    f'\t_method_bindings.operator_{get_operator_id_name(operator["name"])} = internal::gdextension_interface_variant_get_ptr_operator_evaluator(GDEXTENSION_VARIANT_OP_{get_operator_id_name(operator["name"]).upper()}, {enum_type_name}, GDEXTENSION_VARIANT_TYPE_NIL);'
                 )
 
     result.append("}")
@@ -1147,15 +1149,19 @@ def generate_engine_classes_bindings(api, output_dir, use_template_get_node):
         fully_used_classes = list(fully_used_classes)
         fully_used_classes.sort()
 
-        with header_filename.open("w+") as header_file:
+        with header_filename.open("w+", encoding="utf-8") as header_file:
             header_file.write(
                 generate_engine_class_header(class_api, used_classes, fully_used_classes, use_template_get_node)
             )
 
-        with source_filename.open("w+") as source_file:
+        with source_filename.open("w+", encoding="utf-8") as source_file:
             source_file.write(
                 generate_engine_class_source(class_api, used_classes, fully_used_classes, use_template_get_node)
             )
+
+    register_engine_classes_filename = Path(output_dir) / "src" / "register_engine_classes.cpp"
+    with register_engine_classes_filename.open("w+", encoding="utf-8") as source_file:
+        source_file.write(generate_register_engine_classes_source(api))
 
     for native_struct in api["native_structures"]:
         struct_name = native_struct["name"]
@@ -1183,8 +1189,9 @@ def generate_engine_classes_bindings(api, output_dir, use_template_get_node):
         for included in used_classes:
             result.append(f"#include <godot_cpp/{get_include_path(included)}>")
 
-        if len(used_classes) > 0:
-            result.append("")
+        if len(used_classes) == 0:
+            result.append("#include <godot_cpp/core/method_ptrcall.hpp>")
+        result.append("")
 
         result.append("namespace godot {")
         result.append("")
@@ -1202,7 +1209,7 @@ def generate_engine_classes_bindings(api, output_dir, use_template_get_node):
         result.append("")
         result.append(f"#endif // ! {header_guard}")
 
-        with header_filename.open("w+") as header_file:
+        with header_filename.open("w+", encoding="utf-8") as header_file:
             header_file.write("\n".join(result))
 
 
@@ -1228,6 +1235,9 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
             result.append("#include <godot_cpp/variant/typed_array.hpp>")
         else:
             result.append(f"#include <godot_cpp/{get_include_path(included)}>")
+
+    if class_name == "EditorPlugin":
+        result.append("#include <godot_cpp/templates/vector.hpp>")
 
     if len(fully_used_classes) > 0:
         result.append("")
@@ -1376,6 +1386,30 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
     result.append("};")
     result.append("")
 
+    if class_name == "EditorPlugin":
+        result.append("class EditorPlugins {")
+        result.append("private:")
+        result.append("\tstatic Vector<StringName> plugin_classes;")
+        result.append("")
+        result.append("public:")
+        result.append("\tstatic void add_plugin_class(const StringName &p_class_name);")
+        result.append("\tstatic void remove_plugin_class(const StringName &p_class_name);")
+        result.append("\tstatic void deinitialize(GDExtensionInitializationLevel p_level);")
+        result.append("")
+
+        result.append("\ttemplate <class T>")
+        result.append("\tstatic void add_by_type() {")
+        result.append("\t\tadd_plugin_class(T::get_class_static());")
+        result.append("\t}")
+
+        result.append("\ttemplate <class T>")
+        result.append("\tstatic void remove_by_type() {")
+        result.append("\t\tremove_plugin_class(T::get_class_static());")
+        result.append("\t}")
+
+        result.append("};")
+        result.append("")
+
     result.append("} // namespace godot")
     result.append("")
 
@@ -1445,10 +1479,10 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
         result.append("\t\t\t}")
         result.append("\t\t} binding_cleanup;")
         result.append("")
-        result.append(f"\t\tStringName __class_name = {class_name}::get_class_static();")
-        result.append("\t\tGDExtensionObjectPtr singleton_obj = internal::gde_interface->global_get_singleton(__class_name._native_ptr());")
+        result.append(f"\t\tStringName _gde_class_name = {class_name}::get_class_static();")
+        result.append("\t\tGDExtensionObjectPtr singleton_obj = internal::gdextension_interface_global_get_singleton(_gde_class_name._native_ptr());")
         result.append("\t\tGDExtensionInstanceBindingCallbacks binding_callbacks = { create_binding, nullptr, reference_binding };")
-        result.append(f"\t\treturn static_cast<{class_name} *>(internal::gde_interface->object_get_instance_binding(singleton_obj, internal::token, &binding_callbacks));")
+        result.append(f"\t\treturn static_cast<{class_name} *>(internal::gdextension_interface_object_get_instance_binding(singleton_obj, internal::token, &binding_callbacks));")
         result.append("\t}();")
         result.append("")
         result.append("\treturn singleton;")
@@ -1468,10 +1502,10 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
             result.append(method_signature + " {")
 
             # Method body.
-            result.append("\tstatic GDExtensionMethodBindPtr ___method_bind = []() {")
-            result.append(f"\t\tStringName __class_name = {class_name}::get_class_static();")
-            result.append(f'\t\tStringName __method_name = "{method["name"]}";')
-            result.append(f'\t\treturn internal::gde_interface->classdb_get_method_bind(__class_name._native_ptr(), __method_name._native_ptr(), {method["hash"]});')
+            result.append("\tstatic GDExtensionMethodBindPtr _gde_method_bind = []() {")
+            result.append(f"\t\tStringName _gde_class_name = {class_name}::get_class_static();")
+            result.append(f'\t\tStringName _gde_method_name = "{method["name"]}";')
+            result.append(f'\t\treturn internal::gdextension_interface_classdb_get_method_bind(_gde_class_name._native_ptr(), _gde_method_name._native_ptr(), {method["hash"]});')
             result.append("\t}();")
             result.append("")
             method_call = "\t"
@@ -1479,10 +1513,10 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
 
             if has_return:
                 result.append(
-                    f'\tCHECK_METHOD_BIND_RET(___method_bind, {get_default_value_for_type(method["return_value"]["type"])});'
+                    f'\tCHECK_METHOD_BIND_RET(_gde_method_bind, {get_default_value_for_type(method["return_value"]["type"])});'
                 )
             else:
-                result.append("\tCHECK_METHOD_BIND(___method_bind);")
+                result.append("\tCHECK_METHOD_BIND(_gde_method_bind);")
 
             is_ref = False
             if not vararg:
@@ -1491,34 +1525,34 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
                     meta_type = method["return_value"]["meta"] if "meta" in method["return_value"] else None
                     if is_enum(return_type):
                         if method["is_static"]:
-                            method_call += f"return ({get_gdextension_type(correct_type(return_type, meta_type))})internal::_call_native_mb_ret<int64_t>(___method_bind, nullptr"
+                            method_call += f"return ({get_gdextension_type(correct_type(return_type, meta_type))})internal::_call_native_mb_ret<int64_t>(_gde_method_bind, nullptr"
                         else:
-                            method_call += f"return ({get_gdextension_type(correct_type(return_type, meta_type))})internal::_call_native_mb_ret<int64_t>(___method_bind, _owner"
+                            method_call += f"return ({get_gdextension_type(correct_type(return_type, meta_type))})internal::_call_native_mb_ret<int64_t>(_gde_method_bind, _owner"
                     elif is_pod_type(return_type) or is_variant(return_type):
                         if method["is_static"]:
-                            method_call += f"return internal::_call_native_mb_ret<{get_gdextension_type(correct_type(return_type, meta_type))}>(___method_bind, nullptr"
+                            method_call += f"return internal::_call_native_mb_ret<{get_gdextension_type(correct_type(return_type, meta_type))}>(_gde_method_bind, nullptr"
                         else:
-                            method_call += f"return internal::_call_native_mb_ret<{get_gdextension_type(correct_type(return_type, meta_type))}>(___method_bind, _owner"
+                            method_call += f"return internal::_call_native_mb_ret<{get_gdextension_type(correct_type(return_type, meta_type))}>(_gde_method_bind, _owner"
                     elif is_refcounted(return_type):
                         if method["is_static"]:
-                            method_call += f"return Ref<{return_type}>::___internal_constructor(internal::_call_native_mb_ret_obj<{return_type}>(___method_bind, nullptr"
+                            method_call += f"return Ref<{return_type}>::_gde_internal_constructor(internal::_call_native_mb_ret_obj<{return_type}>(_gde_method_bind, nullptr"
                         else:
-                            method_call += f"return Ref<{return_type}>::___internal_constructor(internal::_call_native_mb_ret_obj<{return_type}>(___method_bind, _owner"
+                            method_call += f"return Ref<{return_type}>::_gde_internal_constructor(internal::_call_native_mb_ret_obj<{return_type}>(_gde_method_bind, _owner"
                         is_ref = True
                     else:
                         if method["is_static"]:
                             method_call += (
-                                f"return internal::_call_native_mb_ret_obj<{return_type}>(___method_bind, nullptr"
+                                f"return internal::_call_native_mb_ret_obj<{return_type}>(_gde_method_bind, nullptr"
                             )
                         else:
                             method_call += (
-                                f"return internal::_call_native_mb_ret_obj<{return_type}>(___method_bind, _owner"
+                                f"return internal::_call_native_mb_ret_obj<{return_type}>(_gde_method_bind, _owner"
                             )
                 else:
                     if method["is_static"]:
-                        method_call += "internal::_call_native_mb_no_ret(___method_bind, nullptr"
+                        method_call += "internal::_call_native_mb_no_ret(_gde_method_bind, nullptr"
                     else:
-                        method_call += "internal::_call_native_mb_no_ret(___method_bind, _owner"
+                        method_call += "internal::_call_native_mb_no_ret(_gde_method_bind, _owner"
 
                 if "arguments" in method:
                     method_call += ", "
@@ -1535,7 +1569,7 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
             else:  # vararg.
                 result.append("\tGDExtensionCallError error;")
                 result.append("\tVariant ret;")
-                method_call += "internal::gde_interface->object_method_bind_call(___method_bind, _owner, reinterpret_cast<GDExtensionConstVariantPtr *>(args), arg_count, &ret, &error"
+                method_call += "internal::gdextension_interface_object_method_bind_call(_gde_method_bind, _owner, reinterpret_cast<GDExtensionConstVariantPtr *>(args), arg_count, &ret, &error"
 
             if is_ref:
                 method_call += ")"  # Close Ref<> constructor.
@@ -1568,6 +1602,38 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
                 result.append(method_signature)
             result.append("")
 
+    result.append("")
+    result.append("} // namespace godot ")
+
+    return "\n".join(result)
+
+
+def generate_register_engine_classes_source(api):
+    includes = []
+    registrations = []
+
+    for class_api in api["classes"]:
+        if class_api["name"] == "ClassDB":
+            continue
+
+        class_name = class_api["name"]
+        snake_class_name = camel_to_snake(class_name)
+
+        includes.append(f"#include <godot_cpp/classes/{snake_class_name}.hpp>")
+        registrations.append(f"\tClassDB::register_engine_class<{class_name}>();")
+
+    result = []
+    add_header(f"register_engine_classes.cpp", result)
+
+    result.append("#include <godot_cpp/godot.hpp>")
+    result.append("")
+    result = result + includes
+    result.append("")
+    result.append("namespace godot {")
+    result.append("")
+    result.append("void GDExtensionBinding::register_engine_classes() {")
+    result = result + registrations
+    result.append("}")
     result.append("")
     result.append("} // namespace godot ")
 
@@ -1615,7 +1681,7 @@ def generate_global_constants(api, output_dir):
     header.append("")
     header.append(f"#endif // ! {header_guard}")
 
-    with header_filename.open("w+") as header_file:
+    with header_filename.open("w+", encoding="utf-8") as header_file:
         header_file.write("\n".join(header))
 
 
@@ -1656,7 +1722,7 @@ def generate_global_constant_binds(api, output_dir):
 
     header.append(f"#endif // ! {header_guard}")
 
-    with header_filename.open("w+") as header_file:
+    with header_filename.open("w+", encoding="utf-8") as header_file:
         header_file.write("\n".join(header))
 
 
@@ -1705,7 +1771,7 @@ def generate_utility_functions(api, output_dir):
     header.append("")
     header.append(f"#endif // ! {header_guard}")
 
-    with header_filename.open("w+") as header_file:
+    with header_filename.open("w+", encoding="utf-8") as header_file:
         header_file.write("\n".join(header))
 
     # Generate source.
@@ -1730,28 +1796,28 @@ def generate_utility_functions(api, output_dir):
 
         # Function body.
 
-        source.append(f'\tconst StringName __function_name = "{function["name"]}";')
+        source.append(f'\tconst StringName _gde_function_name = "{function["name"]}";')
         source.append(
-            f'\tstatic GDExtensionPtrUtilityFunction ___function = internal::gde_interface->variant_get_ptr_utility_function(__function_name._native_ptr(), {function["hash"]});'
+            f'\tstatic GDExtensionPtrUtilityFunction _gde_function = internal::gdextension_interface_variant_get_ptr_utility_function(_gde_function_name._native_ptr(), {function["hash"]});'
         )
         has_return = "return_type" in function and function["return_type"] != "void"
         if has_return:
             source.append(
-                f'\tCHECK_METHOD_BIND_RET(___function, {get_default_value_for_type(function["return_type"])});'
+                f'\tCHECK_METHOD_BIND_RET(_gde_function, {get_default_value_for_type(function["return_type"])});'
             )
         else:
-            source.append("\tCHECK_METHOD_BIND(___function);")
+            source.append("\tCHECK_METHOD_BIND(_gde_function);")
 
         function_call = "\t"
         if not vararg:
             if has_return:
                 function_call += "return "
                 if function["return_type"] == "Object":
-                    function_call += "internal::_call_utility_ret_obj(___function"
+                    function_call += "internal::_call_utility_ret_obj(_gde_function"
                 else:
-                    function_call += f'internal::_call_utility_ret<{get_gdextension_type(correct_type(function["return_type"]))}>(___function'
+                    function_call += f'internal::_call_utility_ret<{get_gdextension_type(correct_type(function["return_type"]))}>(_gde_function'
             else:
-                function_call += "internal::_call_utility_no_ret(___function"
+                function_call += "internal::_call_utility_no_ret(_gde_function"
 
             if "arguments" in function:
                 function_call += ", "
@@ -1766,8 +1832,11 @@ def generate_utility_functions(api, output_dir):
                     arguments.append(arg_name)
                 function_call += ", ".join(arguments)
         else:
-            source.append("\tVariant ret;")
-            function_call += "___function(&ret, reinterpret_cast<GDExtensionConstVariantPtr *>(args), arg_count"
+            if has_return:
+                source.append(f'\t{get_gdextension_type(correct_type(function["return_type"]))} ret;')
+            else:
+                source.append("\tVariant ret;")
+            function_call += "_gde_function(&ret, reinterpret_cast<GDExtensionConstVariantPtr *>(args), arg_count"
 
         function_call += ");"
         source.append(function_call)
@@ -1780,7 +1849,7 @@ def generate_utility_functions(api, output_dir):
 
     source.append("} // namespace godot")
 
-    with source_filename.open("w+") as source_file:
+    with source_filename.open("w+", encoding="utf-8") as source_file:
         source_file.write("\n".join(source))
 
 
@@ -1854,7 +1923,7 @@ def get_encoded_arg(arg_name, type_name, type_meta):
     elif is_engine_class(type_name):
         # `{name}` is a C++ wrapper, it contains a field which is the object's pointer Godot expects.
         # We have to check `nullptr` because when the caller sends `nullptr`, the wrapper itself will be null.
-        name = f"({name} != nullptr ? {name}->_owner : nullptr)"
+        name = f"({name} != nullptr ? &{name}->_owner : nullptr)"
     else:
         name = f"&{name}"
 

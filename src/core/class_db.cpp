@@ -40,6 +40,8 @@
 namespace godot {
 
 std::unordered_map<StringName, ClassDB::ClassInfo> ClassDB::classes;
+std::unordered_map<StringName, const GDExtensionInstanceBindingCallbacks *> ClassDB::instance_binding_callbacks;
+std::vector<StringName> ClassDB::class_register_order;
 GDExtensionInitializationLevel ClassDB::current_level = GDEXTENSION_INITIALIZATION_CORE;
 
 MethodDefinition D_METHOD(StringName p_name) {
@@ -55,13 +57,13 @@ MethodDefinition D_METHOD(StringName p_name, StringName p_arg1) {
 void ClassDB::add_property_group(const StringName &p_class, const String &p_name, const String &p_prefix) {
 	ERR_FAIL_COND_MSG(classes.find(p_class) == classes.end(), String("Trying to add property '{0}{1}' to non-existing class '{2}'.").format(Array::make(p_prefix, p_name, p_class)));
 
-	internal::gde_interface->classdb_register_extension_class_property_group(internal::library, p_class._native_ptr(), p_name._native_ptr(), p_prefix._native_ptr());
+	internal::gdextension_interface_classdb_register_extension_class_property_group(internal::library, p_class._native_ptr(), p_name._native_ptr(), p_prefix._native_ptr());
 }
 
 void ClassDB::add_property_subgroup(const StringName &p_class, const String &p_name, const String &p_prefix) {
 	ERR_FAIL_COND_MSG(classes.find(p_class) == classes.end(), String("Trying to add property '{0}{1}' to non-existing class '{2}'.").format(Array::make(p_prefix, p_name, p_class)));
 
-	internal::gde_interface->classdb_register_extension_class_property_subgroup(internal::library, p_class._native_ptr(), p_name._native_ptr(), p_prefix._native_ptr());
+	internal::gdextension_interface_classdb_register_extension_class_property_subgroup(internal::library, p_class._native_ptr(), p_name._native_ptr(), p_prefix._native_ptr());
 }
 
 void ClassDB::add_property(const StringName &p_class, const PropertyInfo &p_pinfo, const StringName &p_setter, const StringName &p_getter, int p_index) {
@@ -111,7 +113,7 @@ void ClassDB::add_property(const StringName &p_class, const PropertyInfo &p_pinf
 	setget.index = p_index;
 	setget.type = p_pinfo.type;
 
-	internal::gde_interface->classdb_register_extension_class_property(internal::library, info.name._native_ptr(), &prop_info, setget.setter._native_ptr(), setget.getter._native_ptr());
+	internal::gdextension_interface_classdb_register_extension_class_property(internal::library, info.name._native_ptr(), &prop_info, setget.setter._native_ptr(), setget.getter._native_ptr());
 }
 
 MethodBind *ClassDB::get_method(const StringName &p_class, const StringName &p_method) {
@@ -234,7 +236,7 @@ void ClassDB::bind_method_godot(const StringName &p_class_name, MethodBind *p_me
 		(uint32_t)p_method->get_default_argument_count(), // uint32_t default_argument_count;
 		def_args.data(), // GDExtensionVariantPtr *default_arguments;
 	};
-	internal::gde_interface->classdb_register_extension_class_method(internal::library, p_class_name._native_ptr(), &method_info);
+	internal::gdextension_interface_classdb_register_extension_class_method(internal::library, p_class_name._native_ptr(), &method_info);
 }
 
 void ClassDB::add_signal(const StringName &p_class, const MethodInfo &p_signal) {
@@ -269,7 +271,7 @@ void ClassDB::add_signal(const StringName &p_class, const MethodInfo &p_signal) 
 		});
 	}
 
-	internal::gde_interface->classdb_register_extension_class_signal(internal::library, cl.name._native_ptr(), p_signal.name._native_ptr(), parameters.data(), parameters.size());
+	internal::gdextension_interface_classdb_register_extension_class_signal(internal::library, cl.name._native_ptr(), p_signal.name._native_ptr(), parameters.data(), parameters.size());
 }
 
 void ClassDB::bind_integer_constant(const StringName &p_class_name, const StringName &p_enum_name, const StringName &p_constant_name, GDExtensionInt p_constant_value, bool p_is_bitfield) {
@@ -286,7 +288,7 @@ void ClassDB::bind_integer_constant(const StringName &p_class_name, const String
 	type.constant_names.insert(p_constant_name);
 
 	// Register it with Godot
-	internal::gde_interface->classdb_register_extension_class_integer_constant(internal::library, p_class_name._native_ptr(), p_enum_name._native_ptr(), p_constant_name._native_ptr(), p_constant_value, p_is_bitfield);
+	internal::gdextension_interface_classdb_register_extension_class_integer_constant(internal::library, p_class_name._native_ptr(), p_enum_name._native_ptr(), p_constant_name._native_ptr(), p_constant_value, p_is_bitfield);
 }
 GDExtensionClassCallVirtual ClassDB::get_virtual_func(void *p_userdata, GDExtensionConstStringNamePtr p_name) {
 	// This is called by Godot the first time it calls a virtual function, and it caches the result, per object instance.
@@ -312,6 +314,12 @@ GDExtensionClassCallVirtual ClassDB::get_virtual_func(void *p_userdata, GDExtens
 	}
 
 	return nullptr;
+}
+
+const GDExtensionInstanceBindingCallbacks *ClassDB::get_instance_binding_callbacks(const StringName &p_class) {
+	std::unordered_map<StringName, const GDExtensionInstanceBindingCallbacks *>::iterator callbacks_it = instance_binding_callbacks.find(p_class);
+	ERR_FAIL_COND_V_MSG(callbacks_it == instance_binding_callbacks.end(), nullptr, String("Cannot find instance binding callbacks for class '{0}'.").format(Array::make(p_class)));
+	return callbacks_it->second;
 }
 
 void ClassDB::bind_virtual_method(const StringName &p_class, const StringName &p_method, GDExtensionClassCallVirtual p_call) {
@@ -341,13 +349,15 @@ void ClassDB::initialize(GDExtensionInitializationLevel p_level) {
 }
 
 void ClassDB::deinitialize(GDExtensionInitializationLevel p_level) {
-	for (const std::pair<StringName, ClassInfo> pair : classes) {
-		const ClassInfo &cl = pair.second;
+	for (std::vector<StringName>::reverse_iterator i = class_register_order.rbegin(); i != class_register_order.rend(); ++i) {
+		const StringName &name = *i;
+		const ClassInfo &cl = classes[name];
+
 		if (cl.level != p_level) {
 			continue;
 		}
 
-		internal::gde_interface->classdb_unregister_extension_class(internal::library, cl.name._native_ptr());
+		internal::gdextension_interface_classdb_unregister_extension_class(internal::library, name._native_ptr());
 
 		for (auto method : cl.method_map) {
 			memdelete(method.second);
