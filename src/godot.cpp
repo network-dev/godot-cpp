@@ -402,7 +402,7 @@ void GDExtensionBinding::deinitialize_level(void *userdata, GDExtensionInitializ
 		terminate_callback(static_cast<ModuleInitializationLevel>(p_level));
 	}
 
-	EditorPlugins::deinitialize(p_level);
+	// EditorPlugins::deinitialize(p_level);
 	ClassDB::deinitialize(p_level);
 }
 GDExtensionBinding::InitObject::InitObject(GDExtensionInterfaceGetProcAddress p_get_proc_address, GDExtensionClassLibraryPtr p_library, GDExtensionInitialization *r_initialization) {
