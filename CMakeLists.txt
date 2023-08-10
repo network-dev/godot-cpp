@@ -62,7 +62,6 @@ if(MSVC)
 		PRIVATE /wd4530 # Disable lack of unwind semantics warning
 		PRIVATE /GF # Enable string pooling
 		PRIVATE /Gy # Enable function-level linking
-		PRIVATE /fp:fast # Enable aggressive floating-point optimizations
 		PRIVATE $<${is_optimized_config}:/GS-> # Disable security checks
 		PRIVATE $<${target_avx}:/arch:AVX> # Enable AVX instructions
 		PRIVATE $<${target_avx2}:/arch:AVX2> # Enable AVX2 instructions
@@ -82,7 +81,6 @@ else()
 
 	target_compile_options(godot-cpp
 		PRIVATE -w # Disable warnings
-		PRIVATE -ffast-math # Enable aggressive floating-point optimizations
 		PRIVATE -fno-exceptions # Disable support for exception-handling
 		PRIVATE $<${use_sse2}:-msse2> # Enable SSE2 instructions
 		PRIVATE $<${use_sse4_2}:-msse4.2> # Enable SSE4.2 instructions
