@@ -122,8 +122,10 @@ public:
 	static void register_class(bool p_virtual = false);
 	template <class T>
 	static void register_abstract_class();
-	template <class T>
-	static void register_engine_class();
+
+	_FORCE_INLINE_ static void _register_engine_class(const StringName &p_name, const GDExtensionInstanceBindingCallbacks *p_callbacks) {
+		instance_binding_callbacks[p_name] = p_callbacks;
+	}
 
 	template <class N, class M, typename... VarArgs>
 	static MethodBind *bind_method(N p_method_name, M p_method, VarArgs... p_args);
@@ -171,6 +173,7 @@ public:
 
 template <class T, bool is_abstract>
 void ClassDB::_register_class(bool p_virtual) {
+	static_assert(TypesAreSame<typename T::self_type, T>::value, "Class not declared properly, please use GDCLASS.");
 	instance_binding_callbacks[T::get_class_static()] = &T::_gde_binding_callbacks;
 
 	// Register this class within our plugin
@@ -226,11 +229,6 @@ void ClassDB::register_abstract_class() {
 	ClassDB::_register_class<T, true>();
 }
 
-template <class T>
-void ClassDB::register_engine_class() {
-	instance_binding_callbacks[T::get_class_static()] = &T::_gde_binding_callbacks;
-}
-
 template <class N, class M, typename... VarArgs>
 MethodBind *ClassDB::bind_method(N p_method_name, M p_method, VarArgs... p_args) {
 	Variant args[sizeof...(p_args) + 1] = { p_args..., Variant() }; // +1 makes sure zero sized arrays are also supported.
@@ -257,7 +255,7 @@ MethodBind *ClassDB::bind_static_method(StringName p_class, N p_method_name, M p
 template <class M>
 MethodBind *ClassDB::bind_vararg_method(uint32_t p_flags, StringName p_name, M p_method, const MethodInfo &p_info, const std::vector<Variant> &p_default_args, bool p_return_nil_is_variant) {
 	MethodBind *bind = create_vararg_method_bind(p_method, p_info, p_return_nil_is_variant);
-	ERR_FAIL_COND_V(!bind, nullptr);
+	ERR_FAIL_NULL_V(bind, nullptr);
 
 	bind->set_name(p_name);
 	bind->set_default_arguments(p_default_args);

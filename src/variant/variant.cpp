@@ -549,11 +549,11 @@ bool Variant::operator<(const Variant &other) const {
 	return result.operator bool();
 }
 
-void Variant::call(const StringName &method, const Variant **args, int argcount, Variant &r_ret, GDExtensionCallError &r_error) {
+void Variant::callp(const StringName &method, const Variant **args, int argcount, Variant &r_ret, GDExtensionCallError &r_error) {
 	internal::gdextension_interface_variant_call(_native_ptr(), method._native_ptr(), reinterpret_cast<GDExtensionConstVariantPtr *>(args), argcount, r_ret._native_ptr(), &r_error);
 }
 
-void Variant::call_static(Variant::Type type, const StringName &method, const Variant **args, int argcount, Variant &r_ret, GDExtensionCallError &r_error) {
+void Variant::callp_static(Variant::Type type, const StringName &method, const Variant **args, int argcount, Variant &r_ret, GDExtensionCallError &r_error) {
 	internal::gdextension_interface_variant_call_static(static_cast<GDExtensionVariantType>(type), method._native_ptr(), reinterpret_cast<GDExtensionConstVariantPtr *>(args), argcount, r_ret._native_ptr(), &r_error);
 }
 
@@ -638,14 +638,16 @@ bool Variant::in(const Variant &index, bool *r_valid) const {
 
 bool Variant::iter_init(Variant &r_iter, bool &r_valid) const {
 	GDExtensionBool valid;
-	internal::gdextension_interface_variant_iter_init(_native_ptr(), r_iter._native_ptr(), &valid);
-	return PtrToArg<bool>::convert(&valid);
+	GDExtensionBool result = internal::gdextension_interface_variant_iter_init(_native_ptr(), r_iter._native_ptr(), &valid);
+	r_valid = PtrToArg<bool>::convert(&valid);
+	return PtrToArg<bool>::convert(&result);
 }
 
 bool Variant::iter_next(Variant &r_iter, bool &r_valid) const {
 	GDExtensionBool valid;
-	internal::gdextension_interface_variant_iter_next(_native_ptr(), r_iter._native_ptr(), &valid);
-	return PtrToArg<bool>::convert(&valid);
+	GDExtensionBool result = internal::gdextension_interface_variant_iter_next(_native_ptr(), r_iter._native_ptr(), &valid);
+	r_valid = PtrToArg<bool>::convert(&valid);
+	return PtrToArg<bool>::convert(&result);
 }
 
 Variant Variant::iter_get(const Variant &r_iter, bool &r_valid) const {

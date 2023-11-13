@@ -30,7 +30,7 @@
 
 #include <godot_cpp/godot.hpp>
 
-#include <godot_cpp/classes/editor_plugin.hpp>
+#include <godot_cpp/classes/editor_plugin_registration.hpp>
 #include <godot_cpp/classes/wrapped.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -403,10 +403,10 @@ GDExtensionBool GDExtensionBinding::init(GDExtensionInterfaceGetProcAddress p_ge
 	r_initialization->deinitialize = deinitialize_level;
 	r_initialization->minimum_initialization_level = minimum_initialization_level;
 
-	ERR_FAIL_COND_V_MSG(init_callback == nullptr, false, "Initialization callback must be defined.");
+	ERR_FAIL_NULL_V_MSG(init_callback, false, "Initialization callback must be defined.");
 
 	Variant::init_bindings();
-	register_engine_classes();
+	godot::internal::register_engine_classes();
 
 	return true;
 }
