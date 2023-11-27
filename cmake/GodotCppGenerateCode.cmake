@@ -14,6 +14,7 @@ execute_process(
 	OUTPUT_VARIABLE generated_files
 	ERROR_VARIABLE print_error
 	RESULT_VARIABLE print_exit_code
+	OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
 if(NOT ${print_exit_code} EQUAL 0)
