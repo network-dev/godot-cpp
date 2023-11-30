@@ -1,24 +1,9 @@
 # godot-cpp
 
-> **Warning**
->
-> This repository's `master` branch is only usable with
-> [GDExtension](https://godotengine.org/article/introducing-gd-extensions)
-> from Godot's `master` branch.
->
-> For users of stable branches, switch to the branch matching your target Godot version:
-> - [`4.2`](https://github.com/godotengine/godot-cpp/tree/4.2)
-> - [`4.1`](https://github.com/godotengine/godot-cpp/tree/4.1)
-> - [`4.0`](https://github.com/godotengine/godot-cpp/tree/4.0)
->
-> Or check out the Git tag matching your Godot version (e.g. `godot-4.1.1-stable`).
->
-> For GDNative users (Godot 3.x), switch to the [`3.x`](https://github.com/godotengine/godot-cpp/tree/3.x)
-> or the [`3.5`](https://github.com/godotengine/godot-cpp/tree/3.5) branch.
-
 This repository contains the  *C++ bindings* for the [**Godot Engine**](https://github.com/godotengine/godot)'s GDExtensions API.
 
-⚠️ This fork is meant to be used by [**godot-jolt**](https://github.com/godot-jolt/godot-jolt) and is not suited for general use.
+> [!WARNING]
+> This fork is meant to be used by [**godot-jolt**](https://github.com/godot-jolt/godot-jolt) and is not suited for general use.
 
 - [**Versioning**](#versioning)
 - [**Compatibility**](#compatibility)
