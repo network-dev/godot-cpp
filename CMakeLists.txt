@@ -58,6 +58,7 @@ if(MSVC)
 	string(REPLACE "/EHsc" "/EHs-c-" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 	target_compile_options(godot-cpp
+		PRIVATE /utf-8 # Treat lack of BOM as UTF-8
 		PRIVATE /W0 # Disable warnings
 		PRIVATE /wd4530 # Disable lack of unwind semantics warning
 		PRIVATE /GF # Enable string pooling
