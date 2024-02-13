@@ -36,6 +36,8 @@ set(is_msvc_cl $<CXX_COMPILER_ID:MSVC>)
 set(is_llvm_clang $<CXX_COMPILER_ID:Clang>)
 set(is_clang_cl $<AND:${is_msvc_like},${is_llvm_clang}>)
 
+set(is_double_precision $<BOOL:${GDE_DOUBLE_PRECISION}>)
+
 target_compile_features(godot-cpp
 	PRIVATE cxx_std_17
 )
@@ -51,6 +53,7 @@ target_compile_definitions(godot-cpp
 	PUBLIC $<${is_editor_config}:DEBUG_METHODS_ENABLED>
 	PUBLIC $<${is_editor_config}:TOOLS_ENABLED>
 	PUBLIC $<${is_msvc_like}:TYPED_METHOD_BIND>
+	PUBLIC $<${is_double_precision}:REAL_T_IS_DOUBLE>
 )
 
 if(MSVC)
