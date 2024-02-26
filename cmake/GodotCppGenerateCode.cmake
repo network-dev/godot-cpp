@@ -2,9 +2,14 @@ include_guard()
 
 set(launch_script ${CMAKE_CURRENT_SOURCE_DIR}/godot_jolt.py)
 set(generator_script ${CMAKE_CURRENT_SOURCE_DIR}/binding_generator.py)
-set(extension_api ${CMAKE_CURRENT_SOURCE_DIR}/gdextension/extension_api.json)
 set(arch_bits $<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64,32>)
 set(precision $<IF:$<BOOL:${GDE_DOUBLE_PRECISION}>,double,single>)
+
+if(GDE_DOUBLE_PRECISION)
+	set(extension_api ${CMAKE_CURRENT_SOURCE_DIR}/gdextension/extension_api.double.json)
+else()
+	set(extension_api ${CMAKE_CURRENT_SOURCE_DIR}/gdextension/extension_api.json)
+endif()
 
 execute_process(
 	COMMAND ${Python_EXECUTABLE} ${launch_script}
