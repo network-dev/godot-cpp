@@ -1,28 +1,15 @@
 # godot-cpp
 
-> **Warning**
->
-> This repository's `master` branch is only usable with
-> [GDExtension](https://godotengine.org/article/introducing-gd-extensions)
-> from Godot's `master` branch.
->
-> For users of stable branches, switch to the branch matching your target Godot version:
-> - [`4.2`](https://github.com/godotengine/godot-cpp/tree/4.2)
-> - [`4.1`](https://github.com/godotengine/godot-cpp/tree/4.1)
-> - [`4.0`](https://github.com/godotengine/godot-cpp/tree/4.0)
->
-> Or check out the Git tag matching your Godot version (e.g. `godot-4.1.1-stable`).
->
-> For GDNative users (Godot 3.x), switch to the [`3.x`](https://github.com/godotengine/godot-cpp/tree/3.x)
-> or the [`3.5`](https://github.com/godotengine/godot-cpp/tree/3.5) branch.
-
 This repository contains the  *C++ bindings* for the [**Godot Engine**](https://github.com/godotengine/godot)'s GDExtensions API.
+
+> [!WARNING]
+> This fork is meant to be used by [**godot-jolt**](https://github.com/godot-jolt/godot-jolt) and is not suited for general use.
 
 - [**Versioning**](#versioning)
 - [**Compatibility**](#compatibility)
 - [**Contributing**](#contributing)
 - [**Getting started**](#getting-started)
-- [**Examples and templates**](#examples-and-templates)
+- [**Included example**](#included-example)
 
 ## Versioning
 
@@ -58,7 +45,7 @@ first-party `godot-cpp` extension.
 Some compatibility breakage is to be expected as GDExtension and `godot-cpp`
 get more used, documented, and critical issues get resolved. See the
 [Godot issue tracker](https://github.com/godotengine/godot/issues?q=is%3Aissue+is%3Aopen+label%3Atopic%3Agdextension)
-and the [godot-cpp issue tracker](https://github.com/godotengine/godot-cpp/issues)
+and the [godot-cpp issue tracker](https://github.com/godotengine/godot/issues)
 for a list of known issues, and be sure to provide feedback on issues and PRs
 which affect your use of this extension.
 
@@ -74,10 +61,7 @@ so formatting is done before your changes are submitted.
 
 ## Getting started
 
-You need the same C++ pre-requisites installed that are required for the `godot` repository. Follow the [official build instructions for your target platform](https://docs.godotengine.org/en/latest/contributing/development/compiling/index.html#building-for-target-platforms).
-
-Getting started with GDExtensions is a bit similar to what it was for 3.x but also a bit different.
-
+It's a bit similar to what it was for 3.x but also a bit different.
 This new approach is much more akin to how core Godot modules are structured.
 
 Compiling this repository generates a static library to be linked with your shared lib,
@@ -132,7 +116,7 @@ void initialize_example_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	GDREGISTER_CLASS(Example);
+	ClassDB::register_class<Example>();
 }
 ```
 

@@ -41,12 +41,12 @@ void *Memory::alloc_static(size_t p_bytes, bool p_pad_align) {
 	bool prepad = p_pad_align;
 #endif
 
-	void *mem = internal::gdextension_interface_mem_alloc(p_bytes + (prepad ? DATA_OFFSET : 0));
+	void *mem = internal::gdextension_interface_mem_alloc(p_bytes + (prepad ? PAD_ALIGN : 0));
 	ERR_FAIL_NULL_V(mem, nullptr);
 
 	if (prepad) {
 		uint8_t *s8 = (uint8_t *)mem;
-		return s8 + DATA_OFFSET;
+		return s8 + PAD_ALIGN;
 	} else {
 		return mem;
 	}
@@ -69,10 +69,10 @@ void *Memory::realloc_static(void *p_memory, size_t p_bytes, bool p_pad_align) {
 #endif
 
 	if (prepad) {
-		mem -= DATA_OFFSET;
-		mem = (uint8_t *)internal::gdextension_interface_mem_realloc(mem, p_bytes + DATA_OFFSET);
+		mem -= PAD_ALIGN;
+		mem = (uint8_t *)internal::gdextension_interface_mem_realloc(mem, p_bytes + PAD_ALIGN);
 		ERR_FAIL_NULL_V(mem, nullptr);
-		return mem + DATA_OFFSET;
+		return mem + PAD_ALIGN;
 	} else {
 		return (uint8_t *)internal::gdextension_interface_mem_realloc(mem, p_bytes);
 	}
@@ -88,7 +88,7 @@ void Memory::free_static(void *p_ptr, bool p_pad_align) {
 #endif
 
 	if (prepad) {
-		mem -= DATA_OFFSET;
+		mem -= PAD_ALIGN;
 	}
 	internal::gdextension_interface_mem_free(mem);
 }

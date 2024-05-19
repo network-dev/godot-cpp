@@ -70,133 +70,6 @@ def generate_wrappers(target):
         f.write(txt)
 
 
-def generate_virtual_version(argcount, const=False, returns=False):
-    s = """#define GDVIRTUAL$VER($RET m_name $ARG)\\
-	::godot::StringName _gdvirtual_##m_name##_sn = #m_name;\\
-	template <bool required>\\
-	_FORCE_INLINE_ bool _gdvirtual_##m_name##_call($CALLARGS) $CONST {\\
-		if (::godot::internal::gdextension_interface_object_has_script_method(_owner, &_gdvirtual_##m_name##_sn)) { \\
-			GDExtensionCallError ce;\\
-			$CALLSIARGS\\
-			::godot::Variant ret;\\
-			::godot::internal::gdextension_interface_object_call_script_method(_owner, &_gdvirtual_##m_name##_sn, $CALLSIARGPASS, &ret, &ce);\\
-			if (ce.error == GDEXTENSION_CALL_OK) {\\
-				$CALLSIRET\\
-				return true;\\
-			}\\
-		}\\
-		if (required) {\\
-			ERR_PRINT_ONCE("Required virtual method " + get_class() + "::" + #m_name + " must be overridden before calling.");\\
-			$RVOID\\
-		}\\
-		return false;\\
-	}\\
-	_FORCE_INLINE_ bool _gdvirtual_##m_name##_overridden() const {\\
-		return ::godot::internal::gdextension_interface_object_has_script_method(_owner, &_gdvirtual_##m_name##_sn); \\
-	}\\
-	_FORCE_INLINE_ static ::godot::MethodInfo _gdvirtual_##m_name##_get_method_info() {\\
-		::godot::MethodInfo method_info;\\
-		method_info.name = #m_name;\\
-		method_info.flags = $METHOD_FLAGS;\\
-		$FILL_METHOD_INFO\\
-		return method_info;\\
-	}
-
-"""
-
-    sproto = str(argcount)
-    method_info = ""
-    if returns:
-        sproto += "R"
-        s = s.replace("$RET", "m_ret,")
-        s = s.replace("$RVOID", "(void)r_ret;")  # If required, may lead to uninitialized errors
-        method_info += "method_info.return_val = ::godot::GetTypeInfo<m_ret>::get_class_info();\\\n"
-        method_info += "\t\tmethod_info.return_val_metadata = ::godot::GetTypeInfo<m_ret>::METADATA;"
-    else:
-        s = s.replace("$RET ", "")
-        s = s.replace("\t\t\t$RVOID\\\n", "")
-
-    if const:
-        sproto += "C"
-        s = s.replace("$CONST", "const")
-        s = s.replace("$METHOD_FLAGS", "::godot::METHOD_FLAG_VIRTUAL | ::godot::METHOD_FLAG_CONST")
-    else:
-        s = s.replace("$CONST ", "")
-        s = s.replace("$METHOD_FLAGS", "::godot::METHOD_FLAG_VIRTUAL")
-
-    s = s.replace("$VER", sproto)
-    argtext = ""
-    callargtext = ""
-    callsiargs = ""
-    callsiargptrs = ""
-    if argcount > 0:
-        argtext += ", "
-        callsiargs = f"::godot::Variant vargs[{argcount}] = {{ "
-        callsiargptrs = f"\t\t\tconst ::godot::Variant *vargptrs[{argcount}] = {{ "
-    for i in range(argcount):
-        if i > 0:
-            argtext += ", "
-            callargtext += ", "
-            callsiargs += ", "
-            callsiargptrs += ", "
-        argtext += f"m_type{i + 1}"
-        callargtext += f"m_type{i + 1} arg{i + 1}"
-        callsiargs += f"::godot::Variant(arg{i + 1})"
-        callsiargptrs += f"&vargs[{i}]"
-        if method_info:
-            method_info += "\\\n\t\t"
-        method_info += f"method_info.arguments.push_back(::godot::GetTypeInfo<m_type{i + 1}>::get_class_info());\\\n"
-        method_info += f"\t\tmethod_info.arguments_metadata.push_back(::godot::GetTypeInfo<m_type{i + 1}>::METADATA);"
-
-    if argcount:
-        callsiargs += " };\\\n"
-        callsiargptrs += " };"
-        s = s.replace("$CALLSIARGS", callsiargs + callsiargptrs)
-        s = s.replace("$CALLSIARGPASS", f"(const GDExtensionConstVariantPtr *)vargptrs, {argcount}")
-    else:
-        s = s.replace("\t\t\t$CALLSIARGS\\\n", "")
-        s = s.replace("$CALLSIARGPASS", "nullptr, 0")
-
-    if returns:
-        if argcount > 0:
-            callargtext += ", "
-        callargtext += "m_ret &r_ret"
-        s = s.replace("$CALLSIRET", "r_ret = ::godot::VariantCaster<m_ret>::cast(ret);")
-    else:
-        s = s.replace("\t\t\t\t$CALLSIRET\\\n", "")
-
-    s = s.replace(" $ARG", argtext)
-    s = s.replace("$CALLARGS", callargtext)
-    if method_info:
-        s = s.replace("$FILL_METHOD_INFO", method_info)
-    else:
-        s = s.replace("\t\t$FILL_METHOD_INFO\\\n", method_info)
-
-    return s
-
-
-def generate_virtuals(target):
-    max_versions = 12
-
-    txt = """/* THIS FILE IS GENERATED DO NOT EDIT */
-#ifndef GDEXTENSION_GDVIRTUAL_GEN_H
-#define GDEXTENSION_GDVIRTUAL_GEN_H
-
-"""
-
-    for i in range(max_versions + 1):
-        txt += f"/* {i} Arguments */\n\n"
-        txt += generate_virtual_version(i, False, False)
-        txt += generate_virtual_version(i, False, True)
-        txt += generate_virtual_version(i, True, False)
-        txt += generate_virtual_version(i, True, True)
-
-    txt += "#endif // GDEXTENSION_GDVIRTUAL_GEN_H\n"
-
-    with open(target, "w", encoding="utf-8") as f:
-        f.write(txt)
-
-
 def get_file_list(api_filepath, output_dir, headers=False, sources=False):
     api = {}
     files = []
@@ -208,7 +81,6 @@ def get_file_list(api_filepath, output_dir, headers=False, sources=False):
     source_gen_folder = Path(output_dir) / "gen" / "src"
 
     files.append(str((core_gen_folder / "ext_wrappers.gen.inc").as_posix()))
-    files.append(str((core_gen_folder / "gdvirtual.gen.inc").as_posix()))
 
     for builtin_class in api["builtin_classes"]:
         if is_pod_type(builtin_class["name"]):
@@ -309,10 +181,6 @@ def generate_bindings(api_filepath, use_template_get_node, bits="64", precision=
     generate_utility_functions(api, target_dir)
 
 
-CLASS_ALIASES = {
-    "ClassDB": "ClassDBSingleton",
-}
-
 builtin_classes = []
 
 # Key is class name, value is boolean where True means the class is refcounted.
@@ -336,7 +204,6 @@ def generate_builtin_bindings(api, output_dir, build_config):
     source_gen_folder.mkdir(parents=True, exist_ok=True)
 
     generate_wrappers(core_gen_folder / "ext_wrappers.gen.inc")
-    generate_virtuals(core_gen_folder / "gdvirtual.gen.inc")
 
     # Store types beforehand.
     for builtin_api in api["builtin_classes"]:
@@ -545,12 +412,6 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
         result.append("#include <godot_cpp/variant/vector2.hpp>")
     if class_name == "PackedVector3Array":
         result.append("#include <godot_cpp/variant/vector3.hpp>")
-    if class_name == "PackedVector4Array":
-        result.append("#include <godot_cpp/variant/vector4.hpp>")
-
-    if is_packed_array(class_name):
-        result.append("#include <godot_cpp/core/error_macros.hpp>")
-        result.append("#include <initializer_list>")
 
     if class_name == "Array":
         result.append("#include <godot_cpp/variant/array_helpers.hpp>")
@@ -593,8 +454,6 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
     result.append("")
     result.append("\tstatic struct _MethodBindings {")
 
-    result.append("\t\tGDExtensionTypeFromVariantConstructorFunc from_variant_constructor;")
-
     if "constructors" in builtin_api:
         for constructor in builtin_api["constructors"]:
             result.append(f'\t\tGDExtensionPtrConstructor constructor_{constructor["index"]};')
@@ -634,9 +493,6 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
     result.append("")
     result.append("\tstatic void init_bindings();")
     result.append("\tstatic void _init_bindings_constructors_destructor();")
-
-    result.append("")
-    result.append(f"\t{class_name}(const Variant *p_variant);")
 
     result.append("")
     result.append("public:")
@@ -702,7 +558,7 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
 
             vararg = method["is_vararg"]
             if vararg:
-                result.append("\ttemplate<typename... Args>")
+                result.append("\ttemplate<class... Args>")
 
             method_signature = "\t"
             if "is_static" in method and method["is_static"]:
@@ -732,17 +588,17 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
 
     # Special cases.
     if class_name == "String":
-        result.append("\tstatic String utf8(const char *from, int64_t len = -1);")
-        result.append("\tvoid parse_utf8(const char *from, int64_t len = -1);")
-        result.append("\tstatic String utf16(const char16_t *from, int64_t len = -1);")
-        result.append("\tvoid parse_utf16(const char16_t *from, int64_t len = -1);")
+        result.append("\tstatic String utf8(const char *from, int len = -1);")
+        result.append("\tvoid parse_utf8(const char *from, int len = -1);")
+        result.append("\tstatic String utf16(const char16_t *from, int len = -1);")
+        result.append("\tvoid parse_utf16(const char16_t *from, int len = -1);")
         result.append("\tCharString utf8() const;")
         result.append("\tCharString ascii() const;")
         result.append("\tChar16String utf16() const;")
         result.append("\tChar32String utf32() const;")
         result.append("\tCharWideString wide_string() const;")
         result.append("\tstatic String num_real(double p_num, bool p_trailing = true);")
-        result.append("\tError resize(int64_t p_size);")
+        result.append("\tError resize(int p_size);")
 
     if "members" in builtin_api:
         for member in builtin_api["members"]:
@@ -795,13 +651,13 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
         result.append("\tString &operator+=(const wchar_t *p_str);")
         result.append("\tString &operator+=(const char32_t *p_str);")
 
-        result.append("\tconst char32_t &operator[](int64_t p_index) const;")
-        result.append("\tchar32_t &operator[](int64_t p_index);")
+        result.append("\tconst char32_t &operator[](int p_index) const;")
+        result.append("\tchar32_t &operator[](int p_index);")
         result.append("\tconst char32_t *ptr() const;")
         result.append("\tchar32_t *ptrw();")
 
     if class_name == "Array":
-        result.append("\ttemplate <typename... Args>")
+        result.append("\ttemplate <class... Args>")
         result.append("\tstatic Array make(Args... args) {")
         result.append("\t\treturn helpers::append_all(Array(), args...);")
         result.append("\t}")
@@ -814,8 +670,8 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
             return_type = "int32_t"
         elif class_name == "PackedFloat32Array":
             return_type = "float"
-        result.append(f"\tconst {return_type} &operator[](int64_t p_index) const;")
-        result.append(f"\t{return_type} &operator[](int64_t p_index);")
+        result.append(f"\tconst {return_type} &operator[](int p_index) const;")
+        result.append(f"\t{return_type} &operator[](int p_index);")
         result.append(f"\tconst {return_type} *ptr() const;")
         result.append(f"\t{return_type} *ptrw();")
         iterators = """
@@ -884,21 +740,10 @@ def generate_builtin_class_header(builtin_api, size, used_classes, fully_used_cl
 	}
 """
         result.append(iterators.replace("$TYPE", return_type))
-        init_list = """
-    _FORCE_INLINE_ $CLASS(std::initializer_list<$TYPE> p_init) {
-		ERR_FAIL_COND(resize(p_init.size()) != 0);
-
-		size_t i = 0;
-		for (const $TYPE &element : p_init) {
-			set(i++, element);
-		}
-	}
-"""
-        result.append(init_list.replace("$TYPE", return_type).replace("$CLASS", class_name))
 
     if class_name == "Array":
-        result.append("\tconst Variant &operator[](int64_t p_index) const;")
-        result.append("\tVariant &operator[](int64_t p_index);")
+        result.append("\tconst Variant &operator[](int p_index) const;")
+        result.append("\tVariant &operator[](int p_index);")
         result.append("\tvoid set_typed(uint32_t p_type, const StringName &p_class_name, const Variant &p_script);")
         result.append("\tvoid _ref(const Array &p_from) const;")
 
@@ -972,10 +817,6 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
     result.append("")
 
     result.append(f"void {class_name}::_init_bindings_constructors_destructor() {{")
-
-    result.append(
-        f"\t_method_bindings.from_variant_constructor = internal::gdextension_interface_get_variant_to_type_constructor({enum_type_name});"
-    )
 
     if "constructors" in builtin_api:
         for constructor in builtin_api["constructors"]:
@@ -1058,11 +899,6 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
 
     copy_constructor_index = -1
 
-    result.append(f"{class_name}::{class_name}(const Variant *p_variant) {{")
-    result.append("\t_method_bindings.from_variant_constructor(&opaque, p_variant->_native_ptr());")
-    result.append("}")
-    result.append("")
-
     if "constructors" in builtin_api:
         for constructor in builtin_api["constructors"]:
             method_signature = f"{class_name}::{class_name}("
@@ -1128,19 +964,8 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
             result.append(method_signature + "{")
 
             method_call = "\t"
-            is_ref = False
-
             if "return_type" in method:
-                return_type = method["return_type"]
-                if is_enum(return_type):
-                    method_call += f"return ({get_gdextension_type(correct_type(return_type))})internal::_call_builtin_method_ptr_ret<int64_t>("
-                elif is_pod_type(return_type) or is_variant(return_type):
-                    method_call += f"return internal::_call_builtin_method_ptr_ret<{get_gdextension_type(correct_type(return_type))}>("
-                elif is_refcounted(return_type):
-                    method_call += f"return Ref<{return_type}>::_gde_internal_constructor(internal::_call_builtin_method_ptr_ret_obj<{return_type}>("
-                    is_ref = True
-                else:
-                    method_call += f"return internal::_call_builtin_method_ptr_ret_obj<{return_type}>("
+                method_call += f'return internal::_call_builtin_method_ptr_ret<{correct_type(method["return_type"])}>('
             else:
                 method_call += "internal::_call_builtin_method_ptr_no_ret("
             method_call += f'_method_bindings.method_{method["name"]}, '
@@ -1161,9 +986,6 @@ def generate_builtin_class_source(builtin_api, size, used_classes, fully_used_cl
                     result += encode
                     arguments.append(arg_name)
                 method_call += ", ".join(arguments)
-
-            if is_ref:
-                method_call += ")"  # Close Ref<> constructor.
             method_call += ");"
 
             result.append(method_call)
@@ -1262,9 +1084,9 @@ def generate_engine_classes_bindings(api, output_dir, use_template_get_node):
     # First create map of classes and singletons.
     for class_api in api["classes"]:
         # Generate code for the ClassDB singleton under a different name.
-        if class_api["name"] in CLASS_ALIASES:
-            class_api["alias_for"] = class_api["name"]
-            class_api["name"] = CLASS_ALIASES[class_api["alias_for"]]
+        if class_api["name"] == "ClassDB":
+            class_api["name"] = "ClassDBSingleton"
+            class_api["alias_for"] = "ClassDB"
         engine_classes[class_api["name"]] = class_api["is_refcounted"]
     for native_struct in api["native_structures"]:
         if native_struct["name"] == "ObjectID":
@@ -1274,9 +1096,9 @@ def generate_engine_classes_bindings(api, output_dir, use_template_get_node):
 
     for singleton in api["singletons"]:
         # Generate code for the ClassDB singleton under a different name.
-        if singleton["name"] in CLASS_ALIASES:
-            singleton["alias_for"] = singleton["name"]
-            singleton["name"] = CLASS_ALIASES[singleton["name"]]
+        if singleton["name"] == "ClassDB":
+            singleton["name"] = "ClassDBSingleton"
+            singleton["alias_for"] = "ClassDB"
         singletons.append(singleton["name"])
 
     for class_api in api["classes"]:
@@ -1481,10 +1303,6 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
         result.append("#include <type_traits>")
         result.append("")
 
-    if class_name == "ClassDBSingleton":
-        result.append("#include <godot_cpp/core/binder_common.hpp>")
-        result.append("")
-
     result.append("namespace godot {")
     result.append("")
 
@@ -1505,10 +1323,6 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
     else:
         result.append(f"\tGDEXTENSION_CLASS({class_name}, {inherits})")
     result.append("")
-
-    if is_singleton:
-        result.append(f"\tstatic {class_name} *singleton;")
-        result.append("")
 
     result.append("public:")
     result.append("")
@@ -1570,7 +1384,7 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
     result.append("protected:")
     # T is the custom class we want to register (from which the call initiates, going up the inheritance chain),
     # B is its base class (can be a custom class too, that's why we pass it).
-    result.append("\ttemplate <typename T, typename B>")
+    result.append("\ttemplate <class T, class B>")
     result.append("\tstatic void register_virtuals() {")
     if class_name != "Object":
         result.append(f"\t\t{inherits}::register_virtuals<T, B>();")
@@ -1590,11 +1404,6 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
 
     result.append("\t}")
     result.append("")
-
-    if is_singleton:
-        result.append(f"\t~{class_name}();")
-        result.append("")
-
     result.append("public:")
 
     # Special cases.
@@ -1621,16 +1430,16 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
     if class_name == "Object":
         result.append("")
 
-        result.append("\ttemplate<typename T>")
+        result.append("\ttemplate<class T>")
         result.append("\tstatic T *cast_to(Object *p_object);")
 
-        result.append("\ttemplate<typename T>")
+        result.append("\ttemplate<class T>")
         result.append("\tstatic const T *cast_to(const Object *p_object);")
 
         result.append("\tvirtual ~Object() = default;")
 
     elif use_template_get_node and class_name == "Node":
-        result.append("\ttemplate<typename T>")
+        result.append("\ttemplate<class T>")
         result.append(
             "\tT *get_node(const NodePath &p_path) const { return Object::cast_to<T>(get_node_internal(p_path)); }"
         )
@@ -1652,19 +1461,6 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
 
     if class_name == "ClassDBSingleton":
         result.append("#define CLASSDB_SINGLETON_FORWARD_METHODS \\")
-
-        if "enums" in class_api:
-            for enum_api in class_api["enums"]:
-                if enum_api["is_bitfield"]:
-                    result.append(f'\tenum {enum_api["name"]} : uint64_t {{ \\')
-                else:
-                    result.append(f'\tenum {enum_api["name"]} {{ \\')
-
-                for value in enum_api["values"]:
-                    result.append(f'\t\t{value["name"]} = {value["value"]}, \\')
-                result.append("\t}; \\")
-                result.append("\t \\")
-
         for method in class_api["methods"]:
             # ClassDBSingleton shouldn't have any static or vararg methods, but if some appear later, lets skip them.
             if vararg:
@@ -1673,17 +1469,12 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
                 continue
 
             method_signature = "\tstatic "
-            return_type = None
             if "return_type" in method:
-                return_type = correct_type(method["return_type"].replace("ClassDBSingleton", "ClassDB"), None, False)
+                method_signature += f'{correct_type(method["return_type"])} '
             elif "return_value" in method:
-                return_type = correct_type(
-                    method["return_value"]["type"].replace("ClassDBSingleton", "ClassDB"),
-                    method["return_value"].get("meta", None),
-                    False,
+                method_signature += (
+                    correct_type(method["return_value"]["type"], method["return_value"].get("meta", None)) + " "
                 )
-            if return_type is not None:
-                method_signature += return_type + " "
             else:
                 method_signature += "void "
 
@@ -1702,28 +1493,14 @@ def generate_engine_class_header(class_api, used_classes, fully_used_classes, us
             result.append(method_signature)
 
             method_body = "\t\t"
-            if return_type is not None:
+            if "return_type" in method or "return_value" in method:
                 method_body += "return "
-                if "alias_for" in class_api and return_type.startswith(class_api["alias_for"] + "::"):
-                    method_body += f"({return_type})"
             method_body += f'ClassDBSingleton::get_singleton()->{method["name"]}('
             method_body += ", ".join(map(lambda x: escape_identifier(x["name"]), method_arguments))
             method_body += "); \\"
 
             result.append(method_body)
             result.append("\t} \\")
-        result.append("\t;")
-        result.append("")
-
-        result.append("#define CLASSDB_SINGLETON_VARIANT_CAST \\")
-
-        if "enums" in class_api:
-            for enum_api in class_api["enums"]:
-                if enum_api["is_bitfield"]:
-                    result.append(f'\tVARIANT_BITFIELD_CAST({class_api["alias_for"]}::{enum_api["name"]}); \\')
-                else:
-                    result.append(f'\tVARIANT_ENUM_CAST({class_api["alias_for"]}::{enum_api["name"]}); \\')
-
         result.append("\t;")
         result.append("")
 
@@ -1744,7 +1521,6 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
 
     result.append(f"#include <godot_cpp/classes/{snake_class_name}.hpp>")
     result.append("")
-    result.append("#include <godot_cpp/core/class_db.hpp>")
     result.append("#include <godot_cpp/core/engine_ptrcall.hpp>")
     result.append("#include <godot_cpp/core/error_macros.hpp>")
     result.append("")
@@ -1759,36 +1535,39 @@ def generate_engine_class_source(class_api, used_classes, fully_used_classes, us
     result.append("")
 
     if is_singleton:
-        result.append(f"{class_name} *{class_name}::singleton = nullptr;")
-        result.append("")
         result.append(f"{class_name} *{class_name}::get_singleton() {{")
-        # We assume multi-threaded access is OK because each assignment will assign the same value every time
-        result.append("\tif (unlikely(singleton == nullptr)) {")
-        result.append(
-            f"\t\tGDExtensionObjectPtr singleton_obj = internal::gdextension_interface_global_get_singleton({class_name}::get_class_static()._native_ptr());"
-        )
-        result.append("#ifdef DEBUG_ENABLED")
-        result.append("\t\tERR_FAIL_NULL_V(singleton_obj, nullptr);")
-        result.append("#endif // DEBUG_ENABLED")
-        result.append(
-            f"\t\tsingleton = reinterpret_cast<{class_name} *>(internal::gdextension_interface_object_get_instance_binding(singleton_obj, internal::token, &{class_name}::_gde_binding_callbacks));"
-        )
-        result.append("#ifdef DEBUG_ENABLED")
-        result.append("\t\tERR_FAIL_NULL_V(singleton, nullptr);")
-        result.append("#endif // DEBUG_ENABLED")
-        result.append("\t\tif (likely(singleton)) {")
-        result.append(f"\t\t\tClassDB::_register_engine_singleton({class_name}::get_class_static(), singleton);")
-        result.append("\t\t}")
-        result.append("\t}")
-        result.append("\treturn singleton;")
-        result.append("}")
+        result.append(f"\tstatic {class_name} *singleton = []() -> {class_name} * {{")
+        result.append("\t\tstatic bool binding_created = false;")
         result.append("")
-
-        result.append(f"{class_name}::~{class_name}() {{")
-        result.append("\tif (singleton == this) {")
-        result.append(f"\t\tClassDB::_unregister_engine_singleton({class_name}::get_class_static());")
-        result.append("\t\tsingleton = nullptr;")
-        result.append("\t}")
+        result.append("\t\tstatic auto create_binding = [](void *p_token, void *p_instance) -> void * {")
+        result.append("\t\t\tbinding_created = true;")
+        result.append(f"\t\t\treturn new (\"\", \"\") {class_name}(static_cast<GodotObject *>(p_instance));")
+        result.append("\t\t};")
+        result.append("")
+        result.append("\t\tstatic auto free_binding = [](void *p_token, void *p_instance, void *p_binding) -> void {")
+        result.append("\t\t\tif (binding_created) {")
+        result.append(f"\t\t\t\t{class_name} *binding = static_cast<{class_name} *>(p_binding);")
+        result.append(f"\t\t\t\tbinding->~{class_name}();")
+        result.append("\t\t\t\tMemory::free_static(binding);")
+        result.append("\t\t\t}")
+        result.append("\t\t};")
+        result.append("")
+        result.append("\t\tstatic auto reference_binding = [](void *p_token, void *p_instance, GDExtensionBool p_reference) -> GDExtensionBool {")
+        result.append("\t\t\treturn true;")
+        result.append("\t\t};")
+        result.append("")
+        result.append(f"\t\tstatic struct {class_name}_BindingCleanup {{")
+        result.append(f"\t\t\t~{class_name}_BindingCleanup() {{")
+        result.append("\t\t\t\tfree_binding(nullptr, nullptr, singleton);")
+        result.append("\t\t\t}")
+        result.append("\t\t} binding_cleanup;")
+        result.append("")
+        result.append(f"\t\tGDExtensionObjectPtr singleton_obj = internal::gdextension_interface_global_get_singleton({class_name}::get_class_static()._native_ptr());")
+        result.append("\t\tGDExtensionInstanceBindingCallbacks binding_callbacks = { create_binding, nullptr, reference_binding };")
+        result.append(f"\t\treturn static_cast<{class_name} *>(internal::gdextension_interface_object_get_instance_binding(singleton_obj, internal::token, &binding_callbacks));")
+        result.append("\t}();")
+        result.append("")
+        result.append("\treturn singleton;")
         result.append("}")
         result.append("")
 
@@ -1932,7 +1711,7 @@ def generate_global_constants(api, output_dir):
     header.append("")
 
     for constant in api["global_constants"]:
-        header.append(f'\tconst int64_t {escape_identifier(constant["name"])} = {constant["value"]};')
+        header.append(f'\tconst int {escape_identifier(constant["name"])} = {constant["value"]};')
 
     header.append("")
 
@@ -2014,9 +1793,9 @@ def generate_global_constant_binds(api, output_dir):
             continue
 
         if enum_def["is_bitfield"]:
-            header.append(f'VARIANT_BITFIELD_CAST({enum_def["name"]});')
+            header.append(f'VARIANT_BITFIELD_CAST(godot::{enum_def["name"]});')
         else:
-            header.append(f'VARIANT_ENUM_CAST({enum_def["name"]});')
+            header.append(f'VARIANT_ENUM_CAST(godot::{enum_def["name"]});')
 
     # Variant::Type is not a global enum, but only one line, it is worth to place in this file instead of creating new file.
     header.append(f"VARIANT_ENUM_CAST(godot::Variant::Type);")
@@ -2309,7 +2088,7 @@ def make_varargs_template(
     if with_public_declare:
         function_signature = "public: "
 
-    function_signature += "template<typename... Args> "
+    function_signature += "template<class... Args> "
 
     if static:
         function_signature += "static "
@@ -2469,7 +2248,6 @@ def is_packed_array(type_name):
         "PackedStringArray",
         "PackedVector2Array",
         "PackedVector3Array",
-        "PackedVector4Array",
     ]
 
 
@@ -2578,7 +2356,7 @@ def correct_typed_array(type_name):
     return type_name
 
 
-def correct_type(type_name, meta=None, use_alias=True):
+def correct_type(type_name, meta=None):
     type_conversion = {"float": "double", "int": "int64_t", "Nil": "Variant"}
     if meta != None:
         if "int" in meta:
@@ -2594,15 +2372,11 @@ def correct_type(type_name, meta=None, use_alias=True):
     if is_enum(type_name):
         if is_bitfield(type_name):
             base_class = get_enum_class(type_name)
-            if use_alias and base_class in CLASS_ALIASES:
-                base_class = CLASS_ALIASES[base_class]
             if base_class == "GlobalConstants":
                 return f"BitField<{get_enum_name(type_name)}>"
             return f"BitField<{base_class}::{get_enum_name(type_name)}>"
         else:
             base_class = get_enum_class(type_name)
-            if use_alias and base_class in CLASS_ALIASES:
-                base_class = CLASS_ALIASES[base_class]
             if base_class == "GlobalConstants":
                 return f"{get_enum_name(type_name)}"
             return f"{base_class}::{get_enum_name(type_name)}"
@@ -2674,7 +2448,6 @@ def get_operator_id_name(op):
         "unary-": "negate",
         "unary+": "positive",
         "%": "module",
-        "**": "power",
         "<<": "shift_left",
         ">>": "shift_right",
         "&": "bit_and",
